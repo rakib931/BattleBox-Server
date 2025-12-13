@@ -52,22 +52,22 @@ async function run() {
     const db = client.db("BattleBox");
     const contestCollection = db.collection("contests");
     const usersCollection = db.collection("users");
-    const contestCreatorReqCollection = db.collection("contest-Creator-req");
-    const contestCreator = db.collection("contest-creator");
+    const contestCreatorReqCollection = db.collection("contest-creator-req");
+    const contestCreatorCollection = db.collection("contest-creator");
 
     // post a contest provider request
-    app.post("/contest-prov-req", async (req, res) => {
+    app.post("/contest-creator-req", async (req, res) => {
       const providerReqData = req.body;
-      console.log(providerReqData);
-      // return;
-      const isExist = await contestProvReqCollection.findOne({
+      const isExist = await contestCreatorReqCollection.findOne({
         email: providerReqData?.email,
       });
       if (isExist)
         return res.status(403).send({
           messege: "your request is already submited wait for approve",
         });
-      const result = await contestProvReqCollection.insertOne(providerReqData);
+      const result = await contestCreatorReqCollection.insertOne(
+        providerReqData
+      );
       res.send(result);
     });
     // get all contest provider for admin
@@ -75,6 +75,12 @@ async function run() {
       const result = await contestCreatorReqCollection.find().toArray();
       res.send(result);
     });
+    // add approve contest request 
+    app.post('/constest-creators',async(req,res)=>{
+      const creatorData = req.body;
+      const result = await contestCreatorCollection.insertOne(creatorData);
+      res.send(result)
+    })
     // user saved in db
     app.post("/user", async (req, res) => {
       const userData = req.body;
