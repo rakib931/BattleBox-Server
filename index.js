@@ -71,7 +71,7 @@ async function run() {
       res.send(result);
     });
     // get all contest provider for admin
-    app.get("/manage-prov-req", async (req, res) => {
+    app.get("/manage-creator-req", async (req, res) => {
       const result = await contestCreatorReqCollection.find().toArray();
       res.send(result);
     });
