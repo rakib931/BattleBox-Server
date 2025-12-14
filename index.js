@@ -26,12 +26,12 @@ app.use(express.json());
 // jwt middlewares
 const verifyJWT = async (req, res, next) => {
   const token = req?.headers?.authorization?.split(" ")[1];
-  console.log(token);
+  // console.log(token);
   if (!token) return res.status(401).send({ message: "Unauthorized Access!" });
   try {
     const decoded = await admin.auth().verifyIdToken(token);
     req.tokenEmail = decoded.email;
-    console.log(decoded);
+    // console.log(decoded);
     next();
   } catch (err) {
     console.log(err);
@@ -53,8 +53,6 @@ async function run() {
     const contestCollection = db.collection("contests");
     const usersCollection = db.collection("users");
     const contestCreatorReqCollection = db.collection("contest-creator-req");
-    const contestCreatorCollection = db.collection("contest-creator");
-
     // post a contest provider request
     app.post("/contest-creator-req", async (req, res) => {
       const providerReqData = req.body;
@@ -71,16 +69,20 @@ async function run() {
       res.send(result);
     });
     // get all contest provider for admin
-    app.get("/manage-creator-req", async (req, res) => {
+    app.get("/manage-creator-req", verifyJWT, async (req, res) => {
       const result = await contestCreatorReqCollection.find().toArray();
       res.send(result);
     });
-    // add approve contest request 
-    app.post('/constest-creators',async(req,res)=>{
-      const creatorData = req.body;
-      const result = await contestCreatorCollection.insertOne(creatorData);
-      res.send(result)
-    })
+    // update role contest creator request for admin
+    app.patch("/update-role", verifyJWT, async (req, res) => {
+      const { email, role } = req.body;
+      const result = await usersCollection.updateOne(
+        { email },
+        { $set: { role } }
+      );
+      await contestCreatorReqCollection.deleteOne({ email });
+      res.send(result);
+    });
     // user saved in db
     app.post("/user", async (req, res) => {
       const userData = req.body;
@@ -107,6 +109,19 @@ async function run() {
       console.log("Saving new user Info.....");
       const result = await usersCollection.insertOne(userData);
       res.send(result);
+    });
+    // get all user for admin
+    app.get("/users", verifyJWT, async (req, res) => {
+      const adminEmail = req.tokenEmail;
+      const result = await usersCollection
+        .find({ email: { $ne: adminEmail } })
+        .toArray();
+      res.send(result);
+    });
+    // get users role by email
+    app.get("/user/role", verifyJWT, async (req, res) => {
+      const result = await usersCollection.findOne({ email: req.tokenEmail });
+      res.send({ role: result?.role });
     });
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
