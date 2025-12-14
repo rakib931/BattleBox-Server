@@ -53,6 +53,17 @@ async function run() {
     const contestCollection = db.collection("contests");
     const usersCollection = db.collection("users");
     const contestCreatorReqCollection = db.collection("contest-creator-req");
+    // contest post api
+    app.post("/contests", async (req, res) => {
+      const contestData = req.body;
+      const result = await contestCollection.insertOne(contestData);
+      res.send(result);
+    });
+    // contests get api
+    app.get("/contests", async (req, res) => {
+      const result = await contestCollection.find().toArray();
+      res.send(result);
+    });
     // post a contest provider request
     app.post("/contest-creator-req", async (req, res) => {
       const providerReqData = req.body;
