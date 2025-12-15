@@ -53,7 +53,7 @@ async function run() {
     const contestCollection = db.collection("contests");
     const usersCollection = db.collection("users");
     const contestCreatorReqCollection = db.collection("contest-creator-req");
-    // contest post api
+    // contest post db api 
     app.post("/contests", async (req, res) => {
       const contestData = req.body;
       console.log(contestData);
