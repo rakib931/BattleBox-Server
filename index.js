@@ -61,6 +61,22 @@ async function run() {
       const result = await contestCollection.insertOne(contestData);
       res.send(result);
     });
+    //  delete contest for creator
+    app.delete("/constest-delete", verifyJWT, async (req, res) => {
+      const { id } = req.body;
+
+      const result = await contestCollection.deleteOne({
+        _id: new ObjectId(id),
+      });
+
+      res.send(result);
+    });
+    // contests get for contest creator
+    app.get("/contest-inventory", verifyJWT, async (req, res) => {
+      const email = req.tokenEmail;
+      const result = await contestCollection.find({ saller: email }).toArray();
+      res.send(result);
+    });
     // contests get for admin
     app.get("/pending-contests", async (req, res) => {
       const result = await contestCollection
