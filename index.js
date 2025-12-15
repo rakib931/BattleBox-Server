@@ -59,19 +59,39 @@ async function run() {
       const result = await contestCollection.insertOne(contestData);
       res.send(result);
     });
-    // contests get api
-    app.get("/contests", async (req, res) => {
-      const result = await contestCollection.find().toArray();
+    // contests get for admin
+    app.get("/pending-contest",verifyJWT, async (req, res) => {
+      const result = await contestCollection
+        .find({ status: "pending" })
+        .toArray();
+      res.send(result);
+    });
+    // update status for admin
+    app.patch("/update-status",verifyJWT, async (req, res) => {
+      const { id, status } = req.body;
+      const result = await contestCollection.updateOne(
+        {
+          _id: new ObjectId(id),
+        },
+        { $set: { status } }
+      );
+      res.send(result);
+    });
+    // contests get for participient
+    app.get("/approved-contest", async (req, res) => {
+      const result = await contestCollection
+        .find({ status: "approved" })
+        .toArray();
       res.send(result);
     });
     // contest data get for details page
-    app.get("/contests/:id", async (req, res) => {
+    app.get("/contests/:id", verifyJWT, async (req, res) => {
       const id = req.params.id;
       const result = await contestCollection.findOne({ _id: new ObjectId(id) });
       res.send(result);
     });
     // post a contest provider request
-    app.post("/contest-creator-req", async (req, res) => {
+    app.post("/contest-creator-req",verifyJWT, async (req, res) => {
       const providerReqData = req.body;
       const isExist = await contestCreatorReqCollection.findOne({
         email: providerReqData?.email,
