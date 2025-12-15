@@ -56,18 +56,20 @@ async function run() {
     // contest post api
     app.post("/contests", async (req, res) => {
       const contestData = req.body;
+      console.log(contestData);
+      // return
       const result = await contestCollection.insertOne(contestData);
       res.send(result);
     });
     // contests get for admin
-    app.get("/pending-contest",verifyJWT, async (req, res) => {
+    app.get("/pending-contests", async (req, res) => {
       const result = await contestCollection
         .find({ status: "pending" })
         .toArray();
       res.send(result);
     });
-    // update status for admin
-    app.patch("/update-status",verifyJWT, async (req, res) => {
+    // update or delete contest for admin
+    app.patch("/update-status", verifyJWT, async (req, res) => {
       const { id, status } = req.body;
       const result = await contestCollection.updateOne(
         {
@@ -75,6 +77,16 @@ async function run() {
         },
         { $set: { status } }
       );
+      res.send(result);
+    });
+    //  delete contest for admin
+    app.delete("/constest-delete-admin", verifyJWT, async (req, res) => {
+      const { id } = req.body;
+
+      const result = await contestCollection.deleteOne({
+        _id: new ObjectId(id),
+      });
+
       res.send(result);
     });
     // contests get for participient
@@ -91,7 +103,7 @@ async function run() {
       res.send(result);
     });
     // post a contest provider request
-    app.post("/contest-creator-req",verifyJWT, async (req, res) => {
+    app.post("/contest-creator-req", verifyJWT, async (req, res) => {
       const providerReqData = req.body;
       const isExist = await contestCreatorReqCollection.findOne({
         email: providerReqData?.email,
@@ -111,7 +123,7 @@ async function run() {
       res.send(result);
     });
     // update role contest creator request for admin
-    app.patch("/update-role", verifyJWT, async (req, res) => {
+    app.patch("/update-role", async (req, res) => {
       const { email, role } = req.body;
       const result = await usersCollection.updateOne(
         { email },
