@@ -53,12 +53,25 @@ async function run() {
     const contestCollection = db.collection("contests");
     const usersCollection = db.collection("users");
     const contestCreatorReqCollection = db.collection("contest-creator-req");
-    // contest post db api 
+    // contest post db api
     app.post("/contests", async (req, res) => {
       const contestData = req.body;
       console.log(contestData);
       // return
       const result = await contestCollection.insertOne(contestData);
+      res.send(result);
+    });
+    // contest update api
+    app.patch("/contest-update/:id", async (req, res) => {
+      const  id  = req.params.id;
+      const contestData = req.body;
+      const update = {
+        $set: contestData,
+      };
+      const query = { _id: new ObjectId(id) };
+      // console.log(id);
+      // return;
+      const result = await contestCollection.updateOne(query, update);
       res.send(result);
     });
     //  delete contest for creator
