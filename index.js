@@ -1,4 +1,5 @@
 require("dotenv").config();
+const stripe = require("stripe")(process.env.STRIPE_SECRIT_KEYS);
 const express = require("express");
 const cors = require("cors");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
@@ -51,8 +52,83 @@ async function run() {
   try {
     const db = client.db("BattleBox");
     const contestCollection = db.collection("contests");
+    const ordersCollection = db.collection("orders");
     const usersCollection = db.collection("users");
     const contestCreatorReqCollection = db.collection("contest-creator-req");
+    // payment endpoients
+    app.post("/create-checkout-section", async (req, res) => {
+      const paymentInfo = req.body;
+      console.log(paymentInfo);
+      const session = await stripe.checkout.sessions.create({
+        line_items: [
+          {
+            price_data: {
+              currency: "usd",
+              product_data: {
+                name: paymentInfo?.contestName,
+                description: paymentInfo?.description,
+                images: [paymentInfo?.image],
+              },
+              unit_amount: paymentInfo?.price * 100,
+            },
+            quantity: 1,
+          },
+        ],
+        customer_email: paymentInfo?.customer?.email,
+        mode: "payment",
+        metadata: {
+          contestId: paymentInfo?.contestId,
+          customar: paymentInfo?.customer.email,
+        },
+        success_url: `${process.env.CLIENT_DOMAIN}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${process.env.CLIENT_DOMAIN}/contests/${paymentInfo?.contestId}`,
+      });
+      res.send({ url: session.url });
+    });
+    // payment success
+    app.post("/payments-success", async (req, res) => {
+      const { sessionId } = req.body;
+      const session = await stripe.checkout.sessions.retrieve(sessionId);
+
+      const contest = await contestCollection.findOne({
+        _id: new ObjectId(session.metadata.contestId),
+      });
+
+      const order = await ordersCollection.findOne({
+        transactionId: session.payment_intent,
+      });
+
+      if (order) {
+        return res.send("already exist ");
+      }
+      if (session.status === "complete" && contest && !order) {
+        const orderInfo = {
+          contestId: session.metadata.contestId,
+          transactionId: session.payment_intent,
+          customer: session.metadata.customar,
+          saller: contest?.saller,
+          name: contest.contestName,
+          category: contest.category,
+          price: session.amount_total / 100,
+          image: contest?.image,
+        };
+        const result = await ordersCollection.insertOne(orderInfo);
+
+        // update contest participent
+        await contestCollection.updateOne(
+          {
+            _id: new ObjectId(session.metadata.contestId),
+          },
+          {
+            $inc: { participent: 1 },
+          }
+        );
+        res.send({
+          transactionId: session.payment_intent,
+          orderId: result.insertedId,
+        });
+      }
+    });
     // contest post db api
     app.post("/contests", async (req, res) => {
       const contestData = req.body;
@@ -63,13 +139,13 @@ async function run() {
     });
     // contest update api
     app.patch("/contest-update/:id", async (req, res) => {
-      const  id  = req.params.id;
+      const id = req.params.id;
       const contestData = req.body;
       const update = {
         $set: contestData,
       };
       const query = { _id: new ObjectId(id) };
-      // console.log(id);
+      console.log(contestData);
       // return;
       const result = await contestCollection.updateOne(query, update);
       res.send(result);
@@ -146,7 +222,7 @@ async function run() {
       );
       res.send(result);
     });
-    // get all contest provider for admin
+    // get all contest provider request for admin
     app.get("/manage-creator-req", verifyJWT, async (req, res) => {
       const result = await contestCreatorReqCollection.find().toArray();
       res.send(result);
