@@ -53,6 +53,7 @@ async function run() {
     const db = client.db("BattleBox");
     const contestCollection = db.collection("contests");
     const ordersCollection = db.collection("orders");
+    const submittionCollection = db.collection("submition");
     const usersCollection = db.collection("users");
     const contestCreatorReqCollection = db.collection("contest-creator-req");
     // payment endpoients
@@ -97,19 +98,17 @@ async function run() {
       const order = await ordersCollection.findOne({
         transactionId: session.payment_intent,
       });
-
-      if (order) {
-        return res.send("already exist ");
-      }
       if (session.status === "complete" && contest && !order) {
         const orderInfo = {
           contestId: session.metadata.contestId,
           transactionId: session.payment_intent,
           customer: session.metadata.customar,
           saller: contest?.saller,
-          name: contest.contestName,
+          contestName: contest.contestName,
           category: contest.category,
+          instruction: contest.instruction,
           price: session.amount_total / 100,
+          prizeMoney: contest.prizeMoney,
           image: contest?.image,
         };
         const result = await ordersCollection.insertOne(orderInfo);
@@ -128,6 +127,35 @@ async function run() {
           orderId: result.insertedId,
         });
       }
+    });
+    // participeted api for participent
+    app.get("/participated", async (req, res) => {
+      const result = await ordersCollection.find().toArray();
+      res.send(result);
+    });
+    // Task submit api
+    app.post("/submit-task", async (req, res) => {
+      const taskData = req.body;
+      const result = await submittionCollection.insertOne(taskData);
+      res.send(result);
+    });
+    // submition get for customer
+    app.get("/participent-submition", verifyJWT, async (req, res) => {
+      const email = req.tokenEmail;
+      // console.log();
+      // return;
+      const result = await submittionCollection
+        .find({ customerEmail: email })
+        .toArray();
+      res.send(result);
+    });
+    // submition get for contest creator
+    app.get("/submited-task", verifyJWT, async (req, res) => {
+      const email = req.tokenEmail;
+      const result = await submittionCollection
+        .find({ creator: email })
+        .toArray();
+      res.send(result);
     });
     // contest post db api
     app.post("/contests", async (req, res) => {
