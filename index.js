@@ -54,6 +54,7 @@ async function run() {
     const contestCollection = db.collection("contests");
     const ordersCollection = db.collection("orders");
     const submittionCollection = db.collection("submition");
+    const winnersCollection = db.collection("winners");
     const usersCollection = db.collection("users");
     const contestCreatorReqCollection = db.collection("contest-creator-req");
     // payment endpoients
@@ -155,6 +156,12 @@ async function run() {
       const result = await submittionCollection
         .find({ creator: email })
         .toArray();
+      res.send(result);
+    });
+    // winner post api for contest creators
+    app.post("/add-winner", verifyJWT, async (req, res) => {
+      const winnerData = req.body;
+      const result = await winnersCollection.insertOne(winnerData);
       res.send(result);
     });
     // contest post db api
