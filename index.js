@@ -102,6 +102,7 @@ async function run() {
       if (session.status === "complete" && contest && !order) {
         const orderInfo = {
           contestId: session.metadata.contestId,
+          deadline: contest.deadline,
           transactionId: session.payment_intent,
           customer: session.metadata.customar,
           saller: contest?.saller,
@@ -169,9 +170,20 @@ async function run() {
       const contestId = winnerData.contestId;
       const isExist = await winnersCollection.findOne({ contestId: contestId });
       if (isExist) return res.send("Already Decleared Winner");
+
       const result = await winnersCollection.insertOne(winnerData);
       res.send("Winner Decleared", result);
-      await contestCollection.updateOne();
+      const winner = {
+        name: winnerData.winnerName,
+        image: winnerData.winnerImage,
+        prize: winnerData.prize,
+      };
+      // console.log(winner);
+      // return;
+      await contestCollection.updateOne(
+        { _id: new ObjectId(contestId) },
+        { $set: { winner } }
+      );
     });
     // winned collection get for patticipatent
     app.get("/contest-winned", verifyJWT, async (req, res) => {
