@@ -137,8 +137,13 @@ async function run() {
     // Task submit api
     app.post("/submit-task", async (req, res) => {
       const taskData = req.body;
+      const contestId = taskData.contestId;
+      const isExist = await submittionCollection.findOne({
+        contestId: contestId,
+      });
+      if (isExist) return res.send("Task Already Submited");
       const result = await submittionCollection.insertOne(taskData);
-      res.send(result);
+      res.send("Task Submited", result);
     });
     // submition get for customer
     app.get("/participent-submition", verifyJWT, async (req, res) => {
@@ -161,7 +166,19 @@ async function run() {
     // winner post api for contest creators
     app.post("/add-winner", verifyJWT, async (req, res) => {
       const winnerData = req.body;
+      const contestId = winnerData.contestId;
+      const isExist = await winnersCollection.findOne({ contestId: contestId });
+      if (isExist) return res.send("Already Decleared Winner");
       const result = await winnersCollection.insertOne(winnerData);
+      res.send("Winner Decleared", result);
+      await contestCollection.updateOne();
+    });
+    // winned collection get for patticipatent
+    app.get("/contest-winned", verifyJWT, async (req, res) => {
+      const email = req.tokenEmail;
+      const result = await winnersCollection
+        .find({ winnerEmail: email })
+        .toArray();
       res.send(result);
     });
     // contest post db api
