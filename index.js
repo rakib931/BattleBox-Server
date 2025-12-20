@@ -60,7 +60,7 @@ async function run() {
     // payment endpoients
     app.post("/create-checkout-section", async (req, res) => {
       const paymentInfo = req.body;
-      console.log(paymentInfo);
+      // console.log(paymentInfo);
       const session = await stripe.checkout.sessions.create({
         line_items: [
           {
@@ -82,7 +82,7 @@ async function run() {
           contestId: paymentInfo?.contestId,
           customar: paymentInfo?.customer.email,
         },
-        success_url: `${process.env.CLIENT_DOMAIN}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+        success_url: `${process.env.CLIENT_DOMAIN}/contest/${paymentInfo?.contestId}?session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${process.env.CLIENT_DOMAIN}/contests/${paymentInfo?.contestId}`,
       });
       res.send({ url: session.url });
@@ -291,9 +291,15 @@ async function run() {
 
       res.send(result);
     });
-    // contests get for participient
+    // contests get for participient with category
     app.get("/approved-contest/:category", async (req, res) => {
       const category = req.params.category;
+      let query = { category, status: "approved" };
+      const result = await contestCollection.find(query).toArray();
+      res.send(result);
+    });
+    // contests get for participient withOut category
+    app.get("/approved-contest", async (req, res) => {
       let query = { status: "approved" };
       const result = await contestCollection.find(query).toArray();
       res.send(result);
@@ -302,7 +308,12 @@ async function run() {
     app.get("/contests/:id", verifyJWT, async (req, res) => {
       const id = req.params.id;
       const result = await contestCollection.findOne({ _id: new ObjectId(id) });
-      res.send(result);
+      const isPaid = await ordersCollection.findOne({ contestId: id });
+      console.log(id, isPaid);
+      res.send({
+        contest: result,
+        isPaid: !!isPaid,
+      });
     });
     // post a contest provider request
     app.post("/contest-creator-req", verifyJWT, async (req, res) => {
