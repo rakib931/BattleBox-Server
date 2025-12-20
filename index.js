@@ -184,6 +184,13 @@ async function run() {
         { _id: new ObjectId(contestId) },
         { $set: { winner } }
       );
+      const userQuery = winnerData.winnerEmail;
+      await usersCollection.updateOne(
+        { email: userQuery },
+        {
+          $inc: { win: 1 },
+        }
+      );
     });
     // winned collection get for patticipatent
     app.get("/contest-winned", verifyJWT, async (req, res) => {
@@ -191,6 +198,16 @@ async function run() {
       const result = await winnersCollection
         .find({ winnerEmail: email })
         .toArray();
+      res.send(result);
+    });
+    // winners for home page
+    app.get("/winners", async (req, res) => {
+      const result = await winnersCollection.find().toArray();
+      res.send(result);
+    });
+    // users for leaderboard
+    app.get("/leaderboard-users", async (req, res) => {
+      const result = await usersCollection.find().sort({ win: -1 }).toArray();
       res.send(result);
     });
     // contest post db api
@@ -259,10 +276,10 @@ async function run() {
       res.send(result);
     });
     // contests get for participient
-    app.get("/approved-contest", async (req, res) => {
-      const result = await contestCollection
-        .find({ status: "approved" })
-        .toArray();
+    app.get("/approved-contest/:category", async (req, res) => {
+      const category = req.params.category;
+      let query = { category, status: "approved" };
+      const result = await contestCollection.find(query).toArray();
       res.send(result);
     });
     // contest data get for details page
@@ -307,7 +324,7 @@ async function run() {
       userData.created_at = new Date().toISOString();
       userData.last_login = new Date().toISOString();
       userData.role = "participent";
-
+      userData.win = Number(0);
       const query = {
         email: userData.email,
       };
