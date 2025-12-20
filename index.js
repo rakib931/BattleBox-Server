@@ -304,6 +304,16 @@ async function run() {
       const result = await contestCollection.find(query).toArray();
       res.send(result);
     });
+    // contest get for home page highest participated
+    app.get("/popular-contests", async (req, res) => {
+      const query = { status: "approved" };
+      const result = await contestCollection
+        .find(query)
+        .sort({ participent: -1 })
+        .limit(8)
+        .toArray();
+      res.send(result);
+    });
     // contest data get for details page
     app.get("/contests/:id", verifyJWT, async (req, res) => {
       const id = req.params.id;
