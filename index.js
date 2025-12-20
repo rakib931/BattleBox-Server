@@ -124,6 +124,13 @@ async function run() {
             $inc: { participent: 1 },
           }
         );
+        const userQuery = session.metadata.customar;
+        await usersCollection.updateOne(
+          { email: userQuery },
+          {
+            $inc: { participated: 1 },
+          }
+        );
         res.send({
           transactionId: session.payment_intent,
           orderId: result.insertedId,
@@ -139,8 +146,11 @@ async function run() {
     app.post("/submit-task", async (req, res) => {
       const taskData = req.body;
       const contestId = taskData.contestId;
+      const customerEmail = taskData.customerEmail; // or req.user.email / userId
+
       const isExist = await submittionCollection.findOne({
         contestId: contestId,
+        customerEmail: customerEmail,
       });
       if (isExist) return res.send("Task Already Submited");
       const result = await submittionCollection.insertOne(taskData);
@@ -205,9 +215,15 @@ async function run() {
       const result = await winnersCollection.find().toArray();
       res.send(result);
     });
-    // users for leaderboard
-    app.get("/leaderboard-users", async (req, res) => {
+    // users for leaderboard add profile
+    app.get("/leaderboard-users", verifyJWT, async (req, res) => {
       const result = await usersCollection.find().sort({ win: -1 }).toArray();
+      res.send(result);
+    });
+    // get a singel user for profile
+    app.get("/user-profile", verifyJWT, async (req, res) => {
+      const email = req.tokenEmail;
+      const result = await usersCollection.findOne({ email: email });
       res.send(result);
     });
     // contest post db api
@@ -278,7 +294,7 @@ async function run() {
     // contests get for participient
     app.get("/approved-contest/:category", async (req, res) => {
       const category = req.params.category;
-      let query = { category, status: "approved" };
+      let query = { status: "approved" };
       const result = await contestCollection.find(query).toArray();
       res.send(result);
     });
@@ -324,6 +340,7 @@ async function run() {
       userData.created_at = new Date().toISOString();
       userData.last_login = new Date().toISOString();
       userData.role = "participent";
+      userData.participated = Number(0);
       userData.win = Number(0);
       const query = {
         email: userData.email,
