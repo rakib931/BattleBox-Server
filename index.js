@@ -52,7 +52,7 @@ async function run() {
   try {
     const db = client.db("BattleBox");
     const contestCollection = db.collection("contests");
-    const ordersCollection = db.collection("orders");
+    const ordersCollection = db.collection("participants");
     const submittionCollection = db.collection("submition");
     const winnersCollection = db.collection("winners");
     const usersCollection = db.collection("users");
@@ -307,8 +307,12 @@ async function run() {
     // contest data get for details page
     app.get("/contests/:id", verifyJWT, async (req, res) => {
       const id = req.params.id;
+      const email = req.tokenEmail;
       const result = await contestCollection.findOne({ _id: new ObjectId(id) });
-      const isPaid = await ordersCollection.findOne({ contestId: id });
+      const isPaid = await ordersCollection.findOne(
+        { contestId: id },
+        { customer: email }
+      );
       console.log(id, isPaid);
       res.send({
         contest: result,
