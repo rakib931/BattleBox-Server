@@ -140,7 +140,10 @@ async function run() {
     });
     // participeted api for participent
     app.get("/participated", async (req, res) => {
-      const result = await ordersCollection.find().toArray();
+      const result = await ordersCollection
+        .find()
+        .sort({ deadline: 1 })
+        .toArray();
       res.send(result);
     });
     // Task submit api
