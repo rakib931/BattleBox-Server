@@ -157,20 +157,25 @@ async function run() {
       res.send("Task Submited", result);
     });
     // submition get for customer
-    app.get("/participent-submition", verifyJWT, async (req, res) => {
+    app.get("/creators-submition/:id", verifyJWT, async (req, res) => {
+      const contestId = req.params.id;
       const email = req.tokenEmail;
-      // console.log();
-      // return;
+
       const result = await submittionCollection
-        .find({ customerEmail: email })
+        .find({
+          customerEmail: email,
+          contestId: contestId,
+        })
         .toArray();
+
       res.send(result);
     });
+
     // submition get for contest creator
     app.get("/submited-task", verifyJWT, async (req, res) => {
       const email = req.tokenEmail;
       const result = await submittionCollection
-        .find({ creator: email })
+        .find({ customerEmail: email })
         .toArray();
       res.send(result);
     });
