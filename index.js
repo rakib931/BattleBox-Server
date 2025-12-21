@@ -56,6 +56,7 @@ async function run() {
     const submittionCollection = db.collection("submition");
     const winnersCollection = db.collection("winners");
     const usersCollection = db.collection("users");
+    const reviewsCollection = db.collection("reviews");
     const contestCreatorReqCollection = db.collection("contest-creator-req");
     // payment endpoients
     app.post("/create-checkout-section", async (req, res) => {
@@ -170,7 +171,6 @@ async function run() {
 
       res.send(result);
     });
-
     // submition get for contest creator
     app.get("/submited-task", verifyJWT, async (req, res) => {
       const email = req.tokenEmail;
@@ -424,6 +424,21 @@ async function run() {
     app.get("/user/role", verifyJWT, async (req, res) => {
       const result = await usersCollection.findOne({ email: req.tokenEmail });
       res.send({ role: result?.role });
+    });
+    // post a review
+    app.post("/add-review", async (req, res) => {
+      const review = req.body;
+      const result = await reviewsCollection.insertOne(review);
+      res.send(result);
+    });
+    // get reviews for home
+    app.get("/get-review", verifyJWT, async (req, res) => {
+      const result = await reviewsCollection
+        .find()
+        .sort({ _id: -1 })
+        .limit(8)
+        .toArray();
+      res.send(result);
     });
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
