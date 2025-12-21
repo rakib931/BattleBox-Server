@@ -182,7 +182,6 @@ async function run() {
       if (isExist) return res.send("Already Decleared Winner");
 
       const result = await winnersCollection.insertOne(winnerData);
-      res.send("Winner Decleared", result);
       const winner = {
         name: winnerData.winnerName,
         image: winnerData.winnerImage,
@@ -201,6 +200,8 @@ async function run() {
           $inc: { win: 1 },
         }
       );
+      // console.log("updated");
+      res.send("Winner Decleared", result);
     });
     // winned collection get for patticipatent
     app.get("/contest-winned", verifyJWT, async (req, res) => {
@@ -229,7 +230,7 @@ async function run() {
     // contest post db api
     app.post("/contests", async (req, res) => {
       const contestData = req.body;
-      console.log(contestData);
+      // console.log(contestData);
       // return
       const result = await contestCollection.insertOne(contestData);
       res.send(result);
@@ -304,9 +305,9 @@ async function run() {
       const result = await contestCollection.find(query).toArray();
       res.send(result);
     });
-    // contest get for home page highest participated
+    // contests for home page highest participated
     app.get("/popular-contests", async (req, res) => {
-      const query = { status: "approved" };
+      let query = { status: "approved" };
       const result = await contestCollection
         .find(query)
         .sort({ participent: -1 })
@@ -314,8 +315,27 @@ async function run() {
         .toArray();
       res.send(result);
     });
+    // contest get for banner with search
+    app.get("/banner-contest/:query", async (req, res) => {
+      const searchQuery = req.params.query;
+
+      if (!searchQuery || searchQuery === "") {
+        return res.send([]);
+      }
+
+      const query = {
+        status: "approved",
+        category: {
+          $regex: searchQuery,
+          $options: "i",
+        },
+      };
+
+      const result = await contestCollection.find(query).toArray();
+      res.send(result);
+    });
     // contest data get for details page
-    app.get("/contests/:id", verifyJWT, async (req, res) => {
+    app.get("/contest/:id", verifyJWT, async (req, res) => {
       const id = req.params.id;
       const email = req.tokenEmail;
       const result = await contestCollection.findOne({ _id: new ObjectId(id) });
