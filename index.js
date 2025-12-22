@@ -58,6 +58,29 @@ async function run() {
     const usersCollection = db.collection("users");
     const reviewsCollection = db.collection("reviews");
     const contestCreatorReqCollection = db.collection("contest-creator-req");
+
+    // admin middleware
+    const verifyADMIN = async (req, res, next) => {
+      const email = req.tokenEmail;
+      const user = await usersCollection.findOne({ email });
+      if (user?.role !== "admin")
+        return res
+          .status(403)
+          .send({ message: "Admin only Actions!", role: user?.role });
+
+      next();
+    };
+    // creator middleware
+    const verifyCREATOR = async (req, res, next) => {
+      const email = req.tokenEmail;
+      const user = await usersCollection.findOne({ email });
+      if (user?.role !== "creator")
+        return res
+          .status(403)
+          .send({ message: "Seller only Actions!", role: user?.role });
+
+      next();
+    };
     // payment endpoients
     app.post("/create-checkout-section", async (req, res) => {
       const paymentInfo = req.body;
@@ -139,7 +162,7 @@ async function run() {
       }
     });
     // participeted api for participent
-    app.get("/participated", async (req, res) => {
+    app.get("/participated", verifyJWT, async (req, res) => {
       const result = await ordersCollection
         .find()
         .sort({ deadline: 1 })
@@ -147,7 +170,7 @@ async function run() {
       res.send(result);
     });
     // Task submit api
-    app.post("/submit-task", async (req, res) => {
+    app.post("/submit-task", verifyJWT, async (req, res) => {
       const taskData = req.body;
       const contestId = taskData.contestId;
       const customerEmail = taskData.customerEmail; // or req.user.email / userId
@@ -160,21 +183,26 @@ async function run() {
       const result = await submittionCollection.insertOne(taskData);
       res.send("Task Submited", result);
     });
-    // submition get for customer
-    app.get("/creators-submition/:id", verifyJWT, async (req, res) => {
-      const contestId = req.params.id;
-      const email = req.tokenEmail;
+    // submition get for creator
+    app.get(
+      "/creators-submition/:id",
+      verifyJWT,
+      verifyCREATOR,
+      async (req, res) => {
+        const contestId = req.params.id;
+        const email = req.tokenEmail;
 
-      const result = await submittionCollection
-        .find({
-          customerEmail: email,
-          contestId: contestId,
-        })
-        .toArray();
+        const result = await submittionCollection
+          .find({
+            customerEmail: email,
+            contestId: contestId,
+          })
+          .toArray();
 
-      res.send(result);
-    });
-    // submition get for contest creator
+        res.send(result);
+      }
+    );
+    // submition get for user
     app.get("/submited-task", verifyJWT, async (req, res) => {
       const email = req.tokenEmail;
       const result = await submittionCollection
@@ -183,7 +211,7 @@ async function run() {
       res.send(result);
     });
     // winner post api for contest creators
-    app.post("/add-winner", verifyJWT, async (req, res) => {
+    app.post("/add-winner", verifyJWT, verifyCREATOR, async (req, res) => {
       const winnerData = req.body;
       const contestId = winnerData.contestId;
       const isExist = await winnersCollection.findOne({ contestId: contestId });
@@ -224,7 +252,7 @@ async function run() {
       const result = await winnersCollection.find().toArray();
       res.send(result);
     });
-    // users for leaderboard add profile
+    // users for leaderboard
     app.get("/leaderboard-users", verifyJWT, async (req, res) => {
       const limit = Number(req.query.limit) || 10;
       const skip = Number(req.query.skip) || 0;
@@ -246,7 +274,7 @@ async function run() {
       res.send(result);
     });
     // contest post db api
-    app.post("/contests", async (req, res) => {
+    app.post("/contests", verifyJWT, verifyCREATOR, async (req, res) => {
       const contestData = req.body;
       // console.log(contestData);
       // return
@@ -254,43 +282,58 @@ async function run() {
       res.send(result);
     });
     // contest update api
-    app.patch("/contest-update/:id", async (req, res) => {
-      const id = req.params.id;
-      const contestData = req.body;
-      const update = {
-        $set: contestData,
-      };
-      const query = { _id: new ObjectId(id) };
-      console.log(contestData);
-      // return;
-      const result = await contestCollection.updateOne(query, update);
-      res.send(result);
-    });
+    app.patch(
+      "/contest-update/:id",
+      verifyJWT,
+      verifyCREATOR,
+      async (req, res) => {
+        const id = req.params.id;
+        const contestData = req.body;
+        const update = {
+          $set: contestData,
+        };
+        const query = { _id: new ObjectId(id) };
+        const result = await contestCollection.updateOne(query, update);
+        res.send(result);
+      }
+    );
     //  delete contest for creator
-    app.delete("/constest-delete", verifyJWT, async (req, res) => {
-      const { id } = req.body;
+    app.delete(
+      "/constest-delete",
+      verifyJWT,
+      verifyCREATOR,
+      async (req, res) => {
+        const { id } = req.body;
 
-      const result = await contestCollection.deleteOne({
-        _id: new ObjectId(id),
-      });
+        const result = await contestCollection.deleteOne({
+          _id: new ObjectId(id),
+        });
 
-      res.send(result);
-    });
+        res.send(result);
+      }
+    );
     // contests get for contest creator
-    app.get("/contest-inventory", verifyJWT, async (req, res) => {
-      const email = req.tokenEmail;
-      const result = await contestCollection.find({ saller: email }).toArray();
-      res.send(result);
-    });
+    app.get(
+      "/contest-inventory",
+      verifyJWT,
+      verifyCREATOR,
+      async (req, res) => {
+        const email = req.tokenEmail;
+        const result = await contestCollection
+          .find({ saller: email })
+          .toArray();
+        res.send(result);
+      }
+    );
     // contests get for admin
-    app.get("/pending-contests", async (req, res) => {
+    app.get("/pending-contests", verifyJWT, verifyADMIN, async (req, res) => {
       const result = await contestCollection
         .find({ status: "pending" })
         .toArray();
       res.send(result);
     });
-    // update or delete contest for admin
-    app.patch("/update-status", verifyJWT, async (req, res) => {
+    // update  contest for admin
+    app.patch("/update-status", verifyJWT, verifyADMIN, async (req, res) => {
       const { id, status } = req.body;
       const result = await contestCollection.updateOne(
         {
@@ -301,15 +344,20 @@ async function run() {
       res.send(result);
     });
     //  delete contest for admin
-    app.delete("/constest-delete-admin", verifyJWT, async (req, res) => {
-      const { id } = req.body;
+    app.delete(
+      "/constest-delete-admin",
+      verifyJWT,
+      verifyADMIN,
+      async (req, res) => {
+        const { id } = req.body;
 
-      const result = await contestCollection.deleteOne({
-        _id: new ObjectId(id),
-      });
+        const result = await contestCollection.deleteOne({
+          _id: new ObjectId(id),
+        });
 
-      res.send(result);
-    });
+        res.send(result);
+      }
+    );
     // contests get for participient with category
     app.get("/approved-contest/:category", async (req, res) => {
       const category = req.params.category;
@@ -383,12 +431,12 @@ async function run() {
       res.send(result);
     });
     // get all contest provider request for admin
-    app.get("/manage-creator-req", verifyJWT, async (req, res) => {
+    app.get("/manage-creator-req", verifyJWT, verifyADMIN, async (req, res) => {
       const result = await contestCreatorReqCollection.find().toArray();
       res.send(result);
     });
     // update role contest creator request for admin
-    app.patch("/update-role", async (req, res) => {
+    app.patch("/update-role", verifyJWT, verifyADMIN, async (req, res) => {
       const { email, role } = req.body;
       const result = await usersCollection.updateOne(
         { email },
@@ -426,7 +474,7 @@ async function run() {
       res.send(result);
     });
     // get all user for admin
-    app.get("/users", verifyJWT, async (req, res) => {
+    app.get("/users", verifyJWT, verifyADMIN, async (req, res) => {
       const adminEmail = req.tokenEmail;
       const result = await usersCollection
         .find({ email: { $ne: adminEmail } })
@@ -439,13 +487,13 @@ async function run() {
       res.send({ role: result?.role });
     });
     // post a review
-    app.post("/add-review", async (req, res) => {
+    app.post("/add-review", verifyJWT, async (req, res) => {
       const review = req.body;
       const result = await reviewsCollection.insertOne(review);
       res.send(result);
     });
     // get reviews for home
-    app.get("/get-review", verifyJWT, async (req, res) => {
+    app.get("/get-review", async (req, res) => {
       const result = await reviewsCollection
         .find()
         .sort({ _id: -1 })
