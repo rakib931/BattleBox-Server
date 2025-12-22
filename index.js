@@ -57,6 +57,7 @@ async function run() {
     const winnersCollection = db.collection("winners");
     const usersCollection = db.collection("users");
     const reviewsCollection = db.collection("reviews");
+    const announcementCollection = db.collection("announcements");
     const contestCreatorReqCollection = db.collection("contest-creator-req");
 
     // admin middleware
