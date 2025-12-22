@@ -226,8 +226,18 @@ async function run() {
     });
     // users for leaderboard add profile
     app.get("/leaderboard-users", verifyJWT, async (req, res) => {
-      const result = await usersCollection.find().sort({ win: -1 }).toArray();
-      res.send(result);
+      const limit = Number(req.query.limit) || 10;
+      const skip = Number(req.query.skip) || 0;
+
+      const users = await usersCollection
+        .find()
+        .sort({ win: -1 })
+        .skip(skip)
+        .limit(limit)
+        .toArray();
+
+      const count = await usersCollection.countDocuments();
+      res.send({ users, total: count });
     });
     // get a singel user for profile
     app.get("/user-profile", verifyJWT, async (req, res) => {
